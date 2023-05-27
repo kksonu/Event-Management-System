@@ -1,0 +1,712 @@
+--CREATING DATABASE AND TAKING IT IN USE
+CREATE DATABASE DW_Project;
+USE DW_Project_Team_13;
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+--CREATING THE SCHEMA
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+-- 1. Create the Date_Dimension table
+CREATE TABLE Date_Dimension (
+    date_id INT PRIMARY KEY,
+    calendar_date DATE,
+    day_of_week VARCHAR(20),
+    day_of_month INT,
+    day_of_year INT,
+    week_of_year INT,
+    month_name VARCHAR(20),
+    month_number INT,
+    quarter_number INT,
+    year_number INT
+);
+
+-- 2. Create the Venue_Dimension table
+CREATE TABLE Venue_Dimension (
+    venue_id INT PRIMARY KEY,
+    venue_name VARCHAR(50),
+    venue_city VARCHAR(50),
+    venue_state VARCHAR(50),
+    venue_country VARCHAR(50)
+);
+
+-- 3. Create the Organizer_Dimension table
+CREATE TABLE Organizer_Dimension (
+    organizer_id INT PRIMARY KEY,
+    organizer_name VARCHAR(50),
+    organizer_city VARCHAR(50),
+    organizer_state VARCHAR(50),
+    organizer_country VARCHAR(50)
+);
+
+-- 4. Create the Event_Type_Dimension table
+CREATE TABLE Event_Type_Dimension (
+    event_type_id INT PRIMARY KEY,
+    event_type_name VARCHAR(50)
+);
+
+-- 5. Create the Attendee_Dimension table
+CREATE TABLE Attendee_Dimension (
+    attendee_id INT PRIMARY KEY,
+    attendee_name VARCHAR(50),
+    attendee_email VARCHAR(50),
+    attendee_city VARCHAR(50),
+    attendee_state VARCHAR(50),
+    attendee_country VARCHAR(50)
+);
+
+-- 6. Create the Event_Dimension table
+CREATE TABLE Event_Dimension (
+    event_id INT PRIMARY KEY,
+    event_name VARCHAR(50),
+    event_description VARCHAR(100),
+    venue_id INT,
+    organizer_id INT,
+    event_type_id INT,
+    FOREIGN KEY (venue_id) REFERENCES Venue_Dimension(venue_id),
+    FOREIGN KEY (organizer_id) REFERENCES Organizer_Dimension(organizer_id),
+    FOREIGN KEY (event_type_id) REFERENCES Event_Type_Dimension(event_type_id)
+);
+
+-- 7. Create the Attendee_Event bridge table
+CREATE TABLE Attendee_Event (
+    attendee_id INT,
+    event_id INT,
+    PRIMARY KEY (attendee_id, event_id),
+    FOREIGN KEY (attendee_id) REFERENCES Attendee_Dimension(attendee_id),
+    FOREIGN KEY (event_id) REFERENCES Event_Dimension(event_id)
+);
+
+
+-- 8. Create the Event_Fact table
+CREATE TABLE Event_Fact (
+    event_id INT,
+    date_id INT,
+    venue_id INT,
+    organizer_id INT,
+    event_type_id INT,
+    attendee_id INT,
+    ticket_sales INT,
+    ticket_revenue DECIMAL(10,2),
+    cost DECIMAL(10,2),
+    PRIMARY KEY (event_id, date_id, venue_id, organizer_id, event_type_id, attendee_id),
+    FOREIGN KEY (event_id) REFERENCES Event_Dimension(event_id),
+    FOREIGN KEY (date_id) REFERENCES Date_Dimension(date_id),
+    FOREIGN KEY (venue_id) REFERENCES Venue_Dimension(venue_id),
+    FOREIGN KEY (organizer_id) REFERENCES Organizer_Dimension(organizer_id),
+    FOREIGN KEY (event_type_id) REFERENCES Event_Type_Dimension(event_type_id),
+    FOREIGN KEY (attendee_id) REFERENCES Attendee_Dimension(attendee_id)
+);
+
+
+-- 9. Create Revenue_Dimension Table
+CREATE TABLE Revenue_Dimension (
+    revenue_id INT PRIMARY KEY,
+    event_id INT,
+    revenue_type VARCHAR(50),
+    revenue_amount DECIMAL(10,2),
+    FOREIGN KEY (event_id) REFERENCES Event_Dimension(event_id)
+);
+
+
+-- 10. Create the Revenue_Fact table
+CREATE TABLE Revenue_Fact (
+  event_id INT,
+  revenue_id INT,
+  date_id INT,
+  PRIMARY KEY (event_id, revenue_id, date_id),
+  FOREIGN KEY (event_id) REFERENCES Event_Dimension(event_id),
+  FOREIGN KEY (revenue_id) REFERENCES Revenue_Dimension(revenue_id),
+  FOREIGN KEY (date_id) REFERENCES Date_Dimension(date_id)
+);
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+--FILLING THE DUMMY DATA
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+--Filling dummy data in Date_Dimension table which consists of all dates of year 2023.
+DECLARE @date DATE = '2023-01-01'
+DECLARE @enddate DATE = '2023-12-31'
+DECLARE @date_id INT = 1
+
+WHILE @date <= @enddate
+BEGIN
+    INSERT INTO Date_Dimension (
+        date_id, 
+        calendar_date, 
+        day_of_week, 
+        day_of_month, 
+        day_of_year, 
+        week_of_year, 
+        month_name, 
+        month_number, 
+        quarter_number, 
+        year_number
+    )
+    VALUES (
+        @date_id,
+        @date,
+        DATENAME(dw, @date),
+        DAY(@date),
+        DATEPART(dy, @date),
+        DATEPART(wk, @date),
+        DATENAME(mm, @date),
+        MONTH(@date),
+        DATEPART(qq, @date),
+        YEAR(@date)
+    )
+
+    SET @date = DATEADD(day, 1, @date)
+    SET @date_id = @date_id + 1
+END
+
+SELECT * FROM Date_Dimension
+
+--Filling dummy data in Organizer_Dimension table 
+INSERT INTO Organizer_Dimension (organizer_id, organizer_name, organizer_city, organizer_state, organizer_country)
+VALUES
+(1, 'Aryan Gupta', 'Delhi', 'Delhi', 'India'),
+(2, 'Aarav Sharma', 'Mumbai', 'Maharashtra', 'India'),
+(3, 'Anshika Singh', 'Bengaluru', 'Karnataka', 'India'),
+(4, 'Ishaan Khurana', 'Chandigarh', 'Punjab', 'India'),
+(5, 'Rhea Chakraborty', 'Kolkata', 'West Bengal', 'India'),
+(6, 'Anmol Goyal', 'Jaipur', 'Rajasthan', 'India'),
+(7, 'Pranav Gupta', 'Lucknow', 'Uttar Pradesh', 'India'),
+(8, 'Neha Reddy', 'Hyderabad', 'Telangana', 'India'),
+(9, 'Abhinav Sinha', 'Patna', 'Bihar', 'India'),
+(10, 'Aman Verma', 'Ahmedabad', 'Gujarat', 'India'),
+(11, 'Pooja Sharma', 'Chennai', 'Tamil Nadu', 'India'),
+(12, 'Vikram Singh', 'Bhopal', 'Madhya Pradesh', 'India'),
+(13, 'Aditi Chaudhary', 'Gurgaon', 'Haryana', 'India'),
+(14, 'Rohit Choudhary', 'Dehradun', 'Uttarakhand', 'India'),
+(15, 'Karan Khanna', 'Ludhiana', 'Punjab', 'India'),
+(16, 'Nikhil Kumar', 'Ranchi', 'Jharkhand', 'India'),
+(17, 'Ishika Singh', 'Kanpur', 'Uttar Pradesh', 'India'),
+(18, 'Sarthak Bhardwaj', 'Chandigarh', 'Punjab', 'India'),
+(19, 'Nidhi Gupta', 'Jaipur', 'Rajasthan', 'India'),
+(20, 'Harsh Rajput', 'Indore', 'Madhya Pradesh', 'India'),
+(21, 'Kritika Singh', 'Varanasi', 'Uttar Pradesh', 'India'),
+(22, 'Anshul Mittal', 'Amritsar', 'Punjab', 'India'),
+(23, 'Kanika Gupta', 'Noida', 'Uttar Pradesh', 'India'),
+(24, 'Jatin Saini', 'Faridabad', 'Haryana', 'India'),
+(25, 'Shreya Singh', 'Ghaziabad', 'Uttar Pradesh', 'India'),
+(26, 'Sakshi Bansal', 'Ludhiana', 'Punjab', 'India'),
+(27, 'Ayush Garg', 'Gwalior', 'Madhya Pradesh', 'India'),
+(28, 'Samarth Gupta', 'Kota', 'Rajasthan', 'India'),
+(29, 'Rakshita Singh', 'Patna', 'Bihar', 'India'),
+(30, 'Karanvir Singh', 'Jalandhar', 'Punjab', 'India'),
+(31, 'Rajat Singh', 'New Delhi', 'Delhi', 'India'),
+(32, 'Shreya Gupta', 'Kolkata', 'West Bengal', 'India'),
+(33, 'Anjali Sharma', 'Jaipur', 'Rajasthan', 'India'),
+(34, 'Amit Patel', 'Mumbai', 'Maharashtra', 'India'),
+(35, 'Aditi Mishra', 'Lucknow', 'Uttar Pradesh', 'India'),
+(36, 'Rahul Singh', 'Bengaluru', 'Karnataka', 'India'),
+(37, 'Ankit Singh', 'Hyderabad', 'Telangana', 'India'),
+(38, 'Neha Gupta', 'Chennai', 'Tamil Nadu', 'India'),
+(39, 'Aakash Patel', 'Ahmedabad', 'Gujarat', 'India'),
+(40, 'Pooja Shah', 'Surat', 'Gujarat', 'India'),
+(41, 'Sarika Gupta', 'Pune', 'Maharashtra', 'India'),
+(42, 'Ankita Singh', 'Patna', 'Bihar', 'India'),
+(43, 'Sushant Kumar', 'Chandigarh', 'Punjab', 'India'),
+(44, 'Sneha Singh', 'Noida', 'Uttar Pradesh', 'India'),
+(45, 'Prashant Singh', 'Gurugram', 'Haryana', 'India'),
+(46, 'Vikas Gupta', 'Dehradun', 'Uttarakhand', 'India'),
+(47, 'Anshul Sharma', 'Bhopal', 'Madhya Pradesh', 'India'),
+(48, 'Kavita Patel', 'Indore', 'Madhya Pradesh', 'India'),
+(49, 'Rishi Kapoor', 'Ghaziabad', 'Uttar Pradesh', 'India'),
+(50, 'Anjali Singh', 'Srinagar', 'Jammu and Kashmir', 'India'),
+(51, 'Preeti Gupta', 'Guwahati', 'Assam', 'India'),
+(52, 'Amit Singh', 'Ranchi', 'Jharkhand', 'India'),
+(53, 'Shivam Singh', 'Raipur', 'Chhattisgarh', 'India'),
+(54, 'Anil Patel', 'Nagpur', 'Maharashtra', 'India'),
+(55, 'Komal Gupta', 'Kanpur', 'Uttar Pradesh', 'India'),
+(56, 'Rajesh Singh', 'Allahabad', 'Uttar Pradesh', 'India'),
+(57, 'Ananya Sharma', 'Visakhapatnam', 'Andhra Pradesh', 'India'),
+(58, 'Vijay Patel', 'Bhubaneswar', 'Odisha', 'India'),
+(59, 'Sarika Singh', 'Kochi', 'Kerala', 'India');
+
+SELECT * FROM Organizer_Dimension;
+
+--Filling dummy data in Venue_Dimension table 
+INSERT INTO Venue_Dimension (venue_id, venue_name, venue_city, venue_state, venue_country)
+VALUES
+(1, 'The Taj Mahal Palace', 'Mumbai', 'Maharashtra', 'India'),
+(2, 'Leela Palace Bengaluru', 'Bengaluru', 'Karnataka', 'India'),
+(3, 'JW Marriott Hotel New Delhi Aerocity', 'New Delhi', 'Delhi', 'India'),
+(4, 'The Oberoi Grand', 'Kolkata', 'West Bengal', 'India'),
+(5, 'Taj West End', 'Bengaluru', 'Karnataka', 'India'),
+(6, 'Taj Falaknuma Palace', 'Hyderabad', 'Telangana', 'India'),
+(7, 'ITC Grand Chola, Chennai', 'Chennai', 'Tamil Nadu', 'India'),
+(8, 'The Imperial', 'New Delhi', 'Delhi', 'India'),
+(9, 'Taj Lake Palace', 'Udaipur', 'Rajasthan', 'India'),
+(10, 'The Oberoi Udaivilas', 'Udaipur', 'Rajasthan', 'India'),
+(11, 'ITC Maurya, New Delhi', 'New Delhi', 'Delhi', 'India'),
+(12, 'The Leela Palace Chennai', 'Chennai', 'Tamil Nadu', 'India'),
+(13, 'The Ritz-Carlton Bangalore', 'Bengaluru', 'Karnataka', 'India'),
+(14, 'The Westin Mumbai Garden City', 'Mumbai', 'Maharashtra', 'India'),
+(15, 'The Park Hyderabad', 'Hyderabad', 'Telangana', 'India'),
+(16, 'The Leela Palace New Delhi', 'New Delhi', 'Delhi', 'India'),
+(17, 'Taj Exotica Resort & Spa, Goa', 'Goa', 'Goa', 'India'),
+(18, 'The St. Regis Mumbai', 'Mumbai', 'Maharashtra', 'India'),
+(19, 'Park Hyatt Chennai', 'Chennai', 'Tamil Nadu', 'India'),
+(20, 'Taj Bengal Kolkata', 'Kolkata', 'West Bengal', 'India'),
+(21, 'The Leela Ambience Convention Hotel Delhi', 'New Delhi', 'Delhi', 'India'),
+(22, 'Radisson Blu Atria Bengaluru', 'Bengaluru', 'Karnataka', 'India'),
+(23, 'The Park Chennai', 'Chennai', 'Tamil Nadu', 'India'),
+(24, 'Taj Mahal Hotel', 'New Delhi', 'Delhi', 'India'),
+(25, 'The Leela Mumbai', 'Mumbai', 'Maharashtra', 'India'),
+(26, 'Hyatt Regency Delhi', 'New Delhi', 'Delhi', 'India'),
+(27, 'Vivanta Kolkata EM Bypass', 'Kolkata', 'West Bengal', 'India'),
+(28, 'ITC Rajputana, Jaipur', 'Jaipur', 'Rajasthan', 'India'),
+(29, 'ITC Sonar Kolkata', 'Kolkata', 'West Bengal', 'India'),
+(30, 'JW Marriott Mumbai Juhu', 'Mumbai', 'Maharashtra', 'India'),
+(31, 'The Westin Pune Koregaon Park', 'Pune', 'Maharashtra', 'India'),
+(32, 'Guru Nanak Stadium', 'Ludhiana', 'Punjab', 'India'),
+(33, 'Barabati Stadium', 'Cuttack', 'Odisha', 'India'),
+(34, 'Indira Gandhi Athletic Stadium', 'Guwahati', 'Assam', 'India'),
+(35, 'Rajiv Gandhi Indoor Stadium', 'Kochi', 'Kerala', 'India'),
+(36, 'Sardar Patel Stadium', 'Ahmedabad', 'Gujarat', 'India'),
+(37, 'Sardar Vallabhbhai Patel Sports Complex', 'Raipur', 'Chhattisgarh', 'India'),
+(38, 'Sawai Mansingh Stadium', 'Jaipur', 'Rajasthan', 'India'),
+(39, 'M. A. Chidambaram Stadium', 'Chennai', 'Tamil Nadu', 'India'),
+(40, 'Wankhede Stadium', 'Mumbai', 'Maharashtra', 'India'),
+(41, 'M. Chinnaswamy Stadium', 'Bengaluru', 'Karnataka', 'India'),
+(42, 'Feroz Shah Kotla Ground', 'Delhi', 'Delhi', 'India'),
+(43, 'Eden Gardens', 'Kolkata', 'West Bengal', 'India'),
+(44, 'Green Park Stadium', 'Kanpur', 'Uttar Pradesh', 'India'),
+(45, 'Jawaharlal Nehru Stadium', 'Kochi', 'Kerala', 'India'),
+(46, 'Maharashtra Cricket Association Stadium', 'Pune', 'Maharashtra', 'India'),
+(47, 'Saurashtra Cricket Association Stadium', 'Rajkot', 'Gujarat', 'India'),
+(48, 'Vidarbha Cricket Association Stadium', 'Nagpur', 'Maharashtra', 'India'),
+(49, 'JSCA International Stadium Complex', 'Ranchi', 'Jharkhand', 'India');
+
+
+SELECT * FROM Venue_Dimension;
+
+--Filling dummy data in Attendee_Dimension table 
+INSERT INTO Attendee_Dimension (attendee_id, attendee_name, attendee_email, attendee_city, attendee_state, attendee_country)
+VALUES
+(1, 'Aarav Patel', 'aarav.pat@example.com', 'Mumbai', 'Maharashtra', 'India'),
+(2, 'Aditi Singh', 'aditi.singh@example.com', 'Bengaluru', 'Karnataka', 'India'),
+(3, 'Advait Gupta', 'advait.gupta@example.com', 'Delhi', 'Delhi', 'India'),
+(4, 'Aisha Shah', 'aisha.shah@example.com', 'Pune', 'Maharashtra', 'India'),
+(5, 'Akshara Nair', 'akshara.nair@example.com', 'Chennai', 'Tamil Nadu', 'India'),
+(6, 'Aman Verma', 'aman.verma@example.com', 'Ahmedabad', 'Gujarat', 'India'),
+(7, 'Amayra Reddy', 'amayra.reddy@example.com', 'Hyderabad', 'Telangana', 'India'),
+(8, 'Ananya Gupta', 'ananya.gupta@example.com', 'Kolkata', 'West Bengal', 'India'),
+(9, 'Aniket Singh', 'aniket.singh@example.com', 'Chandigarh', 'Chandigarh', 'India'),
+(10, 'Anisha Kapoor', 'anisha.kapoor@example.com', 'Jaipur', 'Rajasthan', 'India'),
+(11, 'Aradhya Shah', 'aradhya.shah@example.com', 'Lucknow', 'Uttar Pradesh', 'India'),
+(12, 'Aravind Kumar', 'aravind.kumar@example.com', 'Coimbatore', 'Tamil Nadu', 'India'),
+(13, 'Aryan Singh', 'aryan.singh@example.com', 'Gurgaon', 'Haryana', 'India'),
+(14, 'Atharva Desai', 'atharva.desai@example.com', 'Surat', 'Gujarat', 'India'),
+(15, 'Avik Chakraborty', 'avik.chakraborty@example.com', 'Kanpur', 'Uttar Pradesh', 'India'),
+(16, 'Chaitanya Sharma', 'chaitanya.sharma@example.com', 'Visakhapatnam', 'Andhra Pradesh', 'India'),
+(17, 'Devanshi Patel', 'devanshi.patel@example.com', 'Rajkot', 'Gujarat', 'India'),
+(18, 'Dhruv Singh', 'dhruv.singh@example.com', 'Noida', 'Uttar Pradesh', 'India'),
+(19, 'Divit Shah', 'divit.shah@example.com', 'Indore', 'Madhya Pradesh', 'India'),
+(20, 'Drishti Pandey', 'drishti.pandey@example.com', 'Raipur', 'Chhattisgarh', 'India'),
+(21, 'Esha Joshi', 'esha.joshi@example.com', 'Patna', 'Bihar', 'India'),
+(22, 'Garima Singh', 'garima.singh@example.com', 'Allahabad', 'Uttar Pradesh', 'India'),
+(23, 'Gauri Sharma', 'gauri.sharma@example.com', 'Bhopal', 'Madhya Pradesh', 'India'),
+(24, 'Aarav Kumar', 'aarav.kumar@gmail.com', 'Delhi', 'Delhi', 'India'),
+(25, 'Vivaan Singh', 'vivaan.singh@gmail.com', 'Mumbai', 'Maharashtra', 'India'),
+(26, 'Aditi Sharma', 'aditi.sharma@gmail.com', 'Bengaluru', 'Karnataka', 'India'),
+(27, 'Aanya Gupta', 'aanya.gupta@gmail.com', 'Chennai', 'Tamil Nadu', 'India'),
+(28, 'Aryan Patel', 'aryan.patel@gmail.com', 'Hyderabad', 'Telangana', 'India'),
+(29, 'Ishaan Verma', 'ishaan.verma@gmail.com', 'Ahmedabad', 'Gujarat', 'India'),
+(30, 'Ananya Singh', 'ananya.singh@gmail.com', 'Kolkata', 'West Bengal', 'India'),
+(31, 'Aadhya Sharma', 'aadhya.sharma@gmail.com', 'Pune', 'Maharashtra', 'India'),
+(32, 'Advait Singh', 'advait.singh@gmail.com', 'Surat', 'Gujarat', 'India'),
+(33, 'Anvi Patel', 'anvi.patel@gmail.com', 'Jaipur', 'Rajasthan', 'India'),
+(34, 'Arnav Singh', 'arnav.singh@gmail.com', 'Lucknow', 'Uttar Pradesh', 'India'),
+(35, 'Ishika Gupta', 'ishika.gupta@gmail.com', 'Kanpur', 'Uttar Pradesh', 'India'),
+(36, 'Ahaan Sharma', 'ahaan.sharma@gmail.com', 'Nagpur', 'Maharashtra', 'India'),
+(37, 'Aarna Verma', 'aarna.verma@gmail.com', 'Visakhapatnam', 'Andhra Pradesh', 'India'),
+(38, 'Adhya Singh', 'adhya.singh@gmail.com', 'Bhopal', 'Madhya Pradesh', 'India'),
+(39, 'Advika Patel', 'advika.patel@gmail.com', 'Patna', 'Bihar', 'India'),
+(40, 'Arusha Gupta', 'arusha.gupta@gmail.com', 'Ludhiana', 'Punjab', 'India'),
+(41, 'Ishanvi Sharma', 'ishanvi.sharma@gmail.com', 'Agra', 'Uttar Pradesh', 'India'),
+(42, 'Anushka Singh', 'anushka.singh@gmail.com', 'Kochi', 'Kerala', 'India'),
+(43, 'Anay Patel', 'anay.patel@gmail.com', 'Coimbatore', 'Tamil Nadu', 'India'),
+(44, 'Ishita Verma', 'ishita.verma@gmail.com', 'Vadodara', 'Gujarat', 'India'),
+(45, 'Aadya Sharma', 'aadya.sharma@gmail.com', 'Guwahati', 'Assam', 'India'),
+(46, 'Arun Kumar', 'arun.kumar@gmail.com', 'Bhubaneswar', 'Odisha', 'India'),
+(47, 'Gauri Sharma', 'gauri.sharma@example.com', 'Mumbai', 'Maharashtra', 'India'),
+(48, 'Aarav Gupta', 'aarav.gupta@example.com', 'Jaipur', 'Rajasthan', 'India'),
+(49, 'Ishaan Singh', 'ishaan.singh@example.com', 'New Delhi', 'Delhi', 'India'),
+(50, 'Anika Patel', 'anika.patel@example.com', 'Ahmedabad', 'Gujarat', 'India'),
+(51, 'Arjun Singh', 'arjun.singh@example.com', 'Kolkata', 'West Bengal', 'India'),
+(52, 'Anjali Nair', 'anjali.nair@example.com', 'Chennai', 'Tamil Nadu', 'India'),
+(53, 'Amit Tiwari', 'amit.tiwari@example.com', 'Lucknow', 'Uttar Pradesh', 'India'),
+(54, 'Kavya Reddy', 'kavya.reddy@example.com', 'Hyderabad', 'Telangana', 'India'),
+(55, 'Rohan Shah', 'rohan.shah@example.com', 'Mumbai', 'Maharashtra', 'India'),
+(56, 'Aditi Chakraborty', 'aditi.chakraborty@example.com', 'Kolkata', 'West Bengal', 'India'),
+(57, 'Vikram Gupta', 'vikram.gupta@example.com', 'Pune', 'Maharashtra', 'India'),
+(58, 'Sahana Krishnan', 'sahana.krishnan@example.com', 'Chennai', 'Tamil Nadu', 'India'),
+(59, 'Aryan Patel', 'aryan.patel@example.com', 'Ahmedabad', 'Gujarat', 'India'),
+(60, 'Aditi Chauhan', 'aditi.chauhan@example.com', 'Lucknow', 'Uttar Pradesh', 'India'),
+(61, 'Anshul Gupta', 'anshul.gupta@example.com', 'Jaipur', 'Rajasthan', 'India'),
+(62, 'Divya Singh', 'divya.singh@example.com', 'Mumbai', 'Maharashtra', 'India'),
+(63, 'Riya Shah', 'riya.shah@example.com', 'Ahmedabad', 'Gujarat', 'India'),
+(64, 'Yash Agarwal', 'yash.agarwal@example.com', 'New Delhi', 'Delhi', 'India'),
+(65, 'Vidhi Patel', 'vidhi.patel@example.com', 'Mumbai', 'Maharashtra', 'India'),
+(66, 'Keshav Sonu', 'keshavsonu@example.com', 'Mumbai', 'Maharashtra', 'India'),
+(67, 'Ritwik Shrivastav', 'ritwikshrivastav@example.com', 'Delhi', 'Delhi', 'India'),
+(68, 'Mukesh Rohil', 'mukeshrohil@example.com', 'Jaipur', 'Rajasthan', 'India'),
+(69, 'Tanmay Mahapatra', 'tanmaymahapatra@example.com', 'Kolkata', 'West Bengal', 'India'),
+(70, 'Akshay Bhardwaj', 'akshaybhardwaj@example.com', 'Chandigarh', 'Chandigarh', 'India'),
+(71, 'Tushar Khurana', 'tusharkhurana@example.com', 'Ludhiana', 'Punjab', 'India'),
+(72, 'Soumya Biswas', 'soumyabiswas@example.com', 'Kolkata', 'West Bengal', 'India'),
+(73, 'Sparsh', 'sparsh@example.com', 'Delhi', 'Delhi', 'India'),
+(74, 'Pranshu', 'pranshu@example.com', 'Bhopal', 'Madhya Pradesh', 'India'),
+(75, 'Divyanshu', 'divyanshu@example.com', 'Lucknow', 'Uttar Pradesh', 'India'),
+(76, 'Kaushik Reddy', 'kaushikreddy@example.com', 'Hyderabad', 'Telangana', 'India'),
+(77, 'Aman Pradhan', 'amanpradhan@example.com', 'Mumbai', 'Maharashtra', 'India'),
+(78, 'Mohit Dhamejini', 'mohitdhamejini@example.com', 'Chennai', 'Tamil Nadu', 'India'),
+(79, 'Siddhant', 'siddhant@example.com', 'Lucknow', 'Uttar Pradesh', 'India');
+
+
+SELECT * FROM Attendee_Dimension;
+
+--Filling dummy data in Event_Type_Dimension table 
+INSERT INTO Event_Type_Dimension (event_type_id, event_type_name) VALUES 
+(1, 'Formal'),
+(2, 'Informal');
+
+
+SELECT * FROM Event_Type_Dimension;
+
+--Filling dummy data in Event_Dimension table 
+INSERT INTO Event_Dimension (event_id, event_name, event_description, venue_id, organizer_id, event_type_id)
+VALUES 
+(1, 'Indian Music Festival', 'A festival of traditional Indian music', 2, 3, 2),
+(2, 'Indian Food Expo', 'A showcase of Indian cuisine and culinary arts', 4, 2, 2),
+(3, 'Diwali Celebration', 'A cultural event to celebrate Diwali', 1, 4, 2),
+(4, 'Cricket Tournament', 'A competitive cricket tournament', 5, 5, 2),
+(5, 'Bollywood Dance Show', 'A showcase of Bollywood dance and music', 3, 1, 2),
+(6, 'Tech Expo', 'Exhibition for technology enthusiasts', 8, 12, 1),
+(7, 'Fashion Week', 'Annual fashion show and exhibition', 11, 16, 2),
+(8, 'Startup Summit', 'Conference for startups and investors', 7, 14, 1),
+(9, 'Music Festival', 'Three-day music festival featuring popular artists', 15, 22, 2),
+(10, 'Art Exhibition', 'Showcasing contemporary and traditional art', 18, 21, 1),
+(11, 'Film Festival', 'Celebrating independent and international films', 13, 18, 2),
+(12, 'Sports Meet', 'Inter-school sports competition', 3, 8, 1),
+(13, 'Literary Festival', 'Bringing together writers, readers and publishers', 20, 26, 1),
+(14, 'Food Fair', 'Sampling and buying food from local vendors', 9, 15, 2),
+(15, 'Trade Show', 'Exhibition for business-to-business marketing', 19, 27, 1),
+(16, 'Dance Competition', 'Annual dance competition for students', 2, 4, 2),
+(17, 'Charity Gala', 'Fundraising event for a charitable cause', 6, 11, 1),
+(18, 'Automobile Expo', 'Exhibition of cars, bikes and other vehicles', 10, 17, 1),
+(19, 'Fashion Show', 'Showcasing new designs by established and upcoming designers', 14, 20, 2),
+(20, 'Technology Conference', 'Discussing advancements in technology and its impact', 12, 19, 1),
+(21, 'Rock Concert', 'Concert featuring famous rock bands', 17, 25, 2),
+(22, 'Art Fair', 'Exhibition of contemporary and traditional art for sale', 21, 30, 2),
+(23, 'Comedy Night', 'Stand-up comedy performances by famous comedians', 5, 10, 2),
+(24, 'Book Fair', 'Showcasing new and old books for sale', 16, 23, 1),
+(25, 'Wine Tasting', 'Sampling and buying different types of wine', 4, 9, 2),
+(26, 'Trade Exhibition', 'Showcasing new products for businesses', 26, 35, 1),
+(27, 'Hip-hop Concert', 'Concert featuring famous hip-hop artists', 23, 31, 2),
+(28, 'Sculpture Exhibition', 'Exhibition of sculptures made by artists', 25, 33, 1),
+(29, 'Magic Show', 'Illusion performances by famous magicians', 1, 3, 2),
+(30, 'Poetry Reading', 'Reading and discussing poems by famous poets', 22, 29, 1),
+(31, 'Street Food Festival', 'Sampling and buying street food from vendors', 27, 36, 2),
+(32, 'Industrial Expo', 'Exhibition for showcasing industrial products and services', 24, 32, 1),
+(33, 'Classical Music Concert', 'Concert featuring famous classical musicians', 29, 40, 2),
+(34, 'TechCon 2023', 'A conference for emerging technologies', 14, 23, 1),
+(35, 'Health & Wellness Expo', 'A one-day health and wellness exhibition', 11, 19, 1),
+(36, 'Annual Art Exhibition', 'An art exhibition showcasing the works of emerging artists', 9, 12, 1),
+(37, 'World Music Festival', 'A festival featuring music from around the world', 20, 27, 2),
+(38, 'Startup Summit', 'A summit for startups to showcase their ideas and network with investors', 13, 22, 1),
+(39, 'Fashion Week 2023', 'A week-long event showcasing the latest fashion trends', 10, 18, 2),
+(40, 'Film Festival', 'A film festival featuring international films and documentaries', 16, 25, 1),
+(41, 'Tech Forum 2023', 'A forum for technology enthusiasts to share ideas and network', 14, 23, 1),
+(42, 'Gaming Convention 2023', 'A convention for gamers to try out the latest games and hardware', 7, 15, 2),
+(43, 'Annual Book Fair', 'A book fair featuring books from local and international authors', 6, 11, 1),
+(44, 'Environmental Expo', 'An expo highlighting environmental issues and solutions', 17, 26, 1),
+(45, 'Street Food Festival', 'A festival featuring food from around the world', 21, 28, 2),
+(46, 'Annual Science Exhibition', 'An exhibition showcasing scientific innovations and discoveries', 9, 12, 1),
+(47, 'Business Summit', 'A summit for business leaders to discuss current trends and strategies', 15, 21, 1),
+(48, 'Music Concert', 'A concert featuring local and international artists', 8, 16, 2),
+(49, 'Annual Literary Festival', 'A festival celebrating literature and writing', 6, 11, 1),
+(50, 'Healthcare Symposium', 'A symposium for healthcare professionals to share knowledge and best practices', 11, 19, 1),
+(51, 'International Trade Fair', 'A trade fair showcasing products and services from around the world', 13, 22, 1),
+(52, 'Artisanal Fair', 'A fair featuring handcrafted items and goods', 10, 18, 1),
+(53, 'Robotics Expo', 'An expo showcasing the latest in robotics technology', 14, 23, 1),
+(54, 'Film Awards Night', 'A night to celebrate excellence in filmmaking', 16, 25, 2),
+(55, 'Annual Photography Exhibition', 'An exhibition showcasing the works of emerging photographers', 9, 12, 2),
+(56, 'Tech Startup Fair', 'A fair for tech startups to showcase their products and services', 13, 22, 1),
+(57, 'Annual Art Auction', 'An auction featuring works of art from local and international artists', 6, 11, 2),
+(58, 'Automotive Expo', 'An expo showcasing the latest in automotive technology', 17, 26, 1),
+(59, 'Design Week', 'A week-long event celebrating design and creativity', 10, 18, 2),
+(61, 'Fashion Week', 'Annual fashion event showcasing latest designs from Indian and international designers', 17, 22, 1),
+(62, 'Food Fest', 'Annual food festival featuring various cuisines from around the world', 5, 25, 2),
+(63, 'Art Exhibition', 'Exhibition showcasing artworks of prominent and upcoming artists', 20, 21, 2),
+(64, 'Literature Festival', 'Annual festival featuring talks, discussions and book readings by renowned authors', 30, 20, 2),
+(65, 'Fitness Expo', 'Expo featuring latest fitness equipments, supplements and nutrition products', 29, 26, 2),
+(66, 'Tech Conference', 'Annual conference featuring latest technological advancements and innovations', 7, 28, 1),
+(67, 'Gaming Competition', 'Annual gaming competition featuring various games and platforms', 19, 23, 2),
+(68, 'Home Decor Exhibition', 'Exhibition showcasing latest designs and trends in home decor and furniture', 8, 21, 2),
+(69, 'Charity Gala', 'Annual charity event featuring auction of art and other items to raise funds for a social cause', 12, 27, 1),
+(70, 'Science Fair', 'Annual fair featuring science experiments and inventions by students and researchers', 18, 28, 1);
+
+SELECT * FROM Event_Dimension;
+
+--Filling dummy data in Event_Fact table 
+-- This one is tricky one but we inserted all possible column which is not possible in real life, 
+--but in real data warehouse the length of the fact tables are very large and the breadth of of dimension tables are large
+--we do it so that the business intelligence information should be generate from large amount of data so that it can be generalized
+
+INSERT INTO Event_Fact (event_id, date_id, venue_id, organizer_id, event_type_id, attendee_id, ticket_sales, ticket_revenue, cost)
+SELECT e.event_id, d.date_id, v.venue_id, o.organizer_id, t.event_type_id, a.attendee_id,
+    CAST(RAND(CHECKSUM(NEWID())) * 4 + 1 AS INT) as ticket_sales,
+    CAST((RAND(CHECKSUM(NEWID())) * 5000 + 5000 + (RAND(CHECKSUM(NEWID())) * 100 - 50) * 5) AS DECIMAL(10, 2)) as ticket_revenue,
+    CAST(RAND(CHECKSUM(NEWID())) * 10000 + 10000 AS DECIMAL(10, 2)) as cost
+FROM Event_Dimension e
+CROSS JOIN Date_Dimension d
+CROSS JOIN Venue_Dimension v
+CROSS JOIN Organizer_Dimension o
+CROSS JOIN Event_Type_Dimension t
+CROSS JOIN Attendee_Dimension a
+WHERE e.event_id >= 1 AND e.event_id <= 70 
+AND d.date_id >= 1 AND d.date_id <= 365  
+AND v.venue_id >= 1 AND v.venue_id <= 49 
+AND o.organizer_id >= 1 AND o.organizer_id <= 59 
+AND t.event_type_id >= 1 AND t.event_type_id <= 2 
+AND a.attendee_id >= 1 AND a.attendee_id <= 79
+ORDER BY e.event_id, d.date_id, v.venue_id, o.organizer_id, t.event_type_id, a.attendee_id;
+
+
+
+
+SELECT * FROM Event_Fact
+
+--The above statement was taking large amount of time so we limit the value in WHERE clause.
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+--INSERT INTO Event_Fact (event_id, date_id, venue_id, organizer_id, event_type_id, attendee_id, ticket_sales, ticket_revenue, cost)
+--SELECT e.event_id, d.date_id, v.venue_id, o.organizer_id, t.event_type_id, a.attendee_id,
+--    CAST(RAND(CHECKSUM(NEWID())) * 50 + 50 AS INT) as ticket_sales,
+--    CAST((RAND(CHECKSUM(NEWID())) * 5000 + 5000 + (RAND(CHECKSUM(NEWID())) * 100 - 50) * 5) AS DECIMAL(10, 2)) as ticket_revenue,
+--    CAST(RAND(CHECKSUM(NEWID())) * 10000 + 10000 AS DECIMAL(10, 2)) as cost
+--FROM Event_Dimension e
+--CROSS JOIN Date_Dimension d
+--CROSS JOIN Venue_Dimension v
+--CROSS JOIN Organizer_Dimension o
+--CROSS JOIN Event_Type_Dimension t
+--CROSS JOIN Attendee_Dimension a
+--WHERE e.event_id >= 1 AND e.event_id <= 15 
+--AND d.date_id >= 1 AND d.date_id <= 15  
+--AND v.venue_id >= 15 AND v.venue_id <= 30 
+--AND o.organizer_id >= 45 AND o.organizer_id <= 59 
+--AND t.event_type_id >= 1 AND t.event_type_id <= 2 
+--AND a.attendee_id >= 66 AND a.attendee_id <= 79
+--ORDER BY e.event_id, d.date_id, v.venue_id, o.organizer_id, t.event_type_id, a.attendee_id;
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+--This works and around 972000 rows were added.
+
+
+
+--Filling dummy data in Attendee_Event table 
+INSERT INTO Attendee_Event
+SELECT Distinct attendee_id,event_id from Event_Fact order by event_id;
+
+SELECT * FROM Attendee_Event;
+
+--Filling dummy data in Revenue_Dimension table 
+
+INSERT INTO Revenue_Dimension (revenue_id, event_id, revenue_type, revenue_amount)
+VALUES
+    (1, 1, 'ticket sales', 1000.00),
+    (2, 1, 'sponsorship', 5000.00),
+    (3, 1, 'concessions', 2500.00),
+    (4, 2, 'ticket sales', 800.00),
+    (5, 2, 'sponsorship', 3000.00),
+    (6, 2, 'concessions', 1500.00),
+    (7, 3, 'ticket sales', 1200.00),
+    (8, 3, 'sponsorship', 4000.00),
+    (9, 3, 'concessions', 1800.00),
+    (10, 4, 'ticket sales', 1500.00),
+    (11, 4, 'sponsorship', 6000.00),
+    (12, 4, 'concessions', 3000.00),
+    (13, 5, 'ticket sales', 900.00),
+    (14, 5, 'sponsorship', 4500.00),
+    (15, 5, 'concessions', 2250.00),
+    (16, 6, 'ticket sales', 500.00),
+    (17, 6, 'sponsorship', 2000.00),
+    (18, 6, 'concessions', 1000.00),
+    (19, 7, 'ticket sales', 2000.00),
+    (20, 7, 'sponsorship', 10000.00),
+    (21, 7, 'concessions', 5000.00),
+    (22, 8, 'ticket sales', 1000.00),
+    (23, 8, 'sponsorship', 3000.00),
+    (24, 8, 'concessions', 1500.00),
+    (25, 9, 'ticket sales', 2500.00),
+    (26, 9, 'sponsorship', 10000.00),
+    (27, 9, 'concessions', 5000.00),
+    (28, 10, 'ticket sales', 1500.00),
+    (29, 10, 'sponsorship', 6000.00),
+    (30, 10, 'concessions', 3000.00),
+    (31, 11, 'ticket sales', 1200.00),
+    (32, 11, 'sponsorship', 4000.00),
+    (33, 11, 'concessions', 1800.00),
+    (34, 12, 'ticket sales', 800.00),
+    (35, 12, 'sponsorship', 3000.00),
+    (36, 12, 'concessions', 1500.00),
+    (37, 13, 'ticket sales', 500.00),
+    (38, 13, 'sponsorship', 2000.00),
+    (39, 13, 'concessions', 1000.00),
+    (40, 14, 'ticket sales', 1000.00),
+    (41, 14, 'sponsorship', 5000.00);
+
+SELECT * FROM Revenue_Dimension;
+
+--Filling dummy data in Revenue_Fact table
+INSERT INTO Revenue_Fact (event_id, revenue_id, date_id)
+SELECT e.event_id, r.revenue_id, d.date_id
+FROM Event_Dimension e, Revenue_Dimension r, Date_Dimension d
+WHERE e.event_id >= 1 AND e.event_id <= 15 AND r.revenue_id >= 1 AND r.revenue_id <= 41 AND d.date_id >= 1 AND d.date_id <= 365
+ORDER BY e.event_id, r.revenue_id, d.date_id;
+
+SELECT * FROM Revenue_Fact
+
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+--GETTING BUSINESS INTELLIGENCE QUERIES FROM DATABASE
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+--1.BI. Total revenue generated from all events in a specific year
+SELECT SUM(ticket_revenue) AS total_revenue
+FROM Event_Fact ef
+JOIN Date_Dimension dd ON ef.date_id = dd.date_id
+WHERE dd.year_number = '2023';
+
+
+--2.BI. Total number of attendees for a specific event
+SELECT COUNT(DISTINCT attendee_id) AS total_attendees
+FROM Event_Fact
+WHERE event_id = 5;
+
+--3.BI. Average ticket price for a specific event:
+SELECT AVG(ticket_sales) AS avg_ticket_price
+FROM Event_Fact ef
+JOIN Attendee_Dimension ad ON ef.attendee_id = ad.attendee_id
+WHERE ef.event_id = 7;
+
+
+--4. BI. Total revenue generated from a specific event
+SELECT SUM(ticket_revenue) AS total_revenue
+FROM Event_Fact
+WHERE event_id = 4;
+
+--5. BI. Total revenue generated from events hosted by a specific organizer:
+SELECT SUM(ticket_revenue) AS total_revenue
+FROM Event_Fact ef
+JOIN Organizer_Dimension od ON ef.organizer_id = od.organizer_id
+WHERE od.organizer_name = 'Anshul Sharma';
+
+--6. BI. Number of events hosted by a specific venue:
+SELECT COUNT(*) AS event_count
+FROM Event_Fact ef
+JOIN Venue_Dimension vd ON ef.venue_id = vd.venue_id
+WHERE vd.venue_name = 'Taj Bengal Kolkata';
+
+--7. BI. Total revenue generated from events hosted at a specific venue:
+SELECT SUM(ticket_revenue) AS total_revenue
+FROM Event_Fact ef
+JOIN Venue_Dimension vd ON ef.venue_id = vd.venue_id
+WHERE vd.venue_name = 'Radisson Blu Atria Bengaluru';
+
+--8. BI. Number of events hosted by a specific organizer:
+SELECT COUNT(*) AS event_count
+FROM Event_Fact ef
+JOIN Organizer_Dimension od ON ef.organizer_id = od.organizer_id
+WHERE od.organizer_name = 'Anjali Singh';
+
+--9. BI. Total revenue generated from events of a specific type:
+SELECT SUM(ticket_revenue) AS total_revenue
+FROM Event_Fact ef
+JOIN Event_Type_Dimension etd ON ef.event_type_id = etd.event_type_id
+WHERE etd.event_type_name = 'Informal';
+
+--10. BI Number of events hosted by a specific organizer in a specific year:
+SELECT COUNT(*) AS event_count
+FROM Event_Fact ef
+JOIN Organizer_Dimension od ON ef.organizer_id = od.organizer_id
+JOIN Date_Dimension dd ON ef.date_id = dd.date_id
+WHERE od.organizer_name = 'Rishi Kapoor' AND dd.year_number = '2023';
+
+--11. BI. Attendance Rate by Event Type: We can calculate the attendance rate by event type by counting the number of attendees for each event type and dividing it by the total number of attendees for all events. This can help in identifying which event types are more popular among attendees and can help in decision-making for future events.
+SELECT et.event_type_name AS event_type, COUNT(DISTINCT ea.attendee_id) AS num_attendees, 
+       (COUNT(DISTINCT ea.attendee_id) / (SELECT COUNT(DISTINCT attendee_id) FROM Attendee_Event)) * 100 AS attendance_rate
+FROM Attendee_Event ea
+JOIN Event_Dimension ed ON ed.event_id = ea.event_id
+JOIN Event_Type_Dimension et ON et.event_type_id = ed.event_type_id
+GROUP BY et.event_type_name
+ORDER BY attendance_rate DESC;
+
+--12. BI. Attendee Demographics by Event Type: We can also analyze the demographics of attendees by event type to gain insights into the preferences of different demographic groups. This can help in tailoring the marketing and promotion strategies for different events to target the right audience.
+SELECT et.event_type_name AS event_type, ad.attendee_city, ad.attendee_state, COUNT(DISTINCT ea.attendee_id) AS num_attendees
+FROM Event_Fact ea
+JOIN Attendee_Dimension ad ON ad.attendee_id = ea.attendee_id
+JOIN Event_Dimension ed ON ed.event_id = ea.event_id
+JOIN Event_Type_Dimension et ON et.event_type_id = ed.event_type_id
+GROUP BY et.event_type_name, ad.attendee_state, ad.attendee_city
+ORDER BY num_attendees DESC;
+
+--13. BI. This query uses joins to link the attendee_dimension table, the attendee_event bridge table, the event_dimension table, the venue_dimension table, and the event_fact table. It then calculates the total ticket sales for each combination of attendee and venue, grouping the results by attendee_name and venue_name.
+SELECT TOP 25 a.attendee_name, v.venue_name, SUM(e.ticket_sales) AS total_ticket_sales
+FROM Attendee_Dimension a
+JOIN Attendee_Event ae ON a.attendee_id = ae.attendee_id
+JOIN Event_Dimension ed ON ae.event_id = ed.event_id
+JOIN Venue_Dimension v ON ed.venue_id = v.venue_id
+JOIN Event_Fact e ON ed.event_id = e.event_id AND ed.venue_id = e.venue_id AND ae.attendee_id = e.attendee_id
+GROUP BY a.attendee_name, v.venue_name;
+
+--14. BI. This query will return a report showing the total number of ticket sales for each attendee, sorted by the attendee with the highest ticket sales first.
+SELECT TOP 1
+  Attendee_Dimension.attendee_name, 
+  SUM(Event_Fact.ticket_sales) as total_ticket_sales 
+FROM 
+  Attendee_Dimension 
+  JOIN Attendee_Event ON Attendee_Dimension.attendee_id = Attendee_Event.attendee_id 
+  JOIN Event_Fact ON Attendee_Event.event_id = Event_Fact.event_id 
+GROUP BY 
+  Attendee_Dimension.attendee_name 
+ORDER BY 
+  total_ticket_sales DESC;
